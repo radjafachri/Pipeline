@@ -11,7 +11,7 @@ pipeline {
         stage('push repo to remote host') {
             steps {
                 echo 'connect to remote host and pull down the latest version'
-                sh 'ssh -i ~/.ssh/radjaa.pem root@116.204.249.61 sudo git -C /var/www/html pull'
+                sh 'rsync -avzyhe "ssh -i /var/lib/jenkins/radja.pem" ~/workspace/pipetest/Pipeline root@116.204.249.61:/var/www/html'
             }
         }
         stage('Check website is up') {
