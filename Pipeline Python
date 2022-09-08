@@ -1,0 +1,62 @@
+pipeline {
+    agent {
+        node{
+            label 'stag-python'
+            customWorkspace '/home/radja'
+        }
+    }
+
+    environment { 
+        BRANCH_PROJECT_NAME = 'vision-plus-mnc-life-insurace'
+        MNCNOW_CORE_LOG = fileExists '/home/radja/var/log/activities/vplus-activity-insurance-stag.log'
+        PYTHON_VENV_EXIST = fileExists '/home/radja/env/bin/python3.8'
+    }
+
+    stages {
+        stage('requirement-uwsgi') {
+            steps {
+                sh'''#!/bin/bash
+                    source /home/radja/env/bin/activate
+                    pip install -r requirements.txt
+                    '''
+            }
+        }
+
+        stage('restart Service vision-plus-mnc-life-insurace'){
+            steps{
+                script{
+                try {
+                    sh("sudo systemctl reload visionplusinsurance")
+                }catch(Exception e) {
+                    sh("sudo systemctl enable visionplusinsurance")
+                    sh("sudo systemctl start visionplusinsurance")
+                }
+            }
+            }
+        }
+ 
+        stage('LOG uwsgi'){
+                steps {
+                    script {
+                        if(MNCNOW_CORE_LOG) {
+                            sh("tail /home/radja/var/log/activities/vplus-activity-insurance-stag.log")
+                        } else {
+                            sh("echo log /home/radja/var/log/activities/vplus-activity-insurance-stag.log tidak ada file tersebut")
+                        }
+                    }
+                }
+            }
+        }
+
+    post {
+        success {
+            script{
+                sh ( "git log -2 > /home/radja/log-tele/gitlog-insurance.txt")
+                sh """
+                cat /home/radja/log-tele/gitlog-insurance.txt
+                curl -F document=@"/home/radja/log-tele/gitlog-insurance.txt" https://api.telegram.org/bot********:AAG********4/sendDocument?chat_id=-*******310
+                """
+            }
+        }
+    }
+}
