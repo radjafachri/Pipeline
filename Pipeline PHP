@@ -1,0 +1,44 @@
+pipeline {
+   agent {
+       node{
+            label 'content-stag'
+            customWorkspace '/var/www/html/ctcms'
+       }
+    }
+
+      environment {
+        BRANCH_PROJECT_NAME = 'develop'
+        LOG_PHP = fileExists '/var/www/html/ctcms/storage/lumen-*.log'
+      }
+
+   stages {
+      stage('composer and install, php migrate chmod storate') {
+          steps {
+              sh("cd /var/www/html/ctcms")
+              sh'''#!/bin/bash
+                 composer install
+                 php artisan migrate
+                 '''
+              sh("sudo chown -R radja:radja /var/www/html/ctcms")
+              sh("sudo chmod -R 777 /var/www/html/ctcms/storage")
+          }
+      }
+
+    stage('restart nginx & -php7.4-fpm'){
+        steps {
+            script {
+                sh("sudo systemctl reload nginx")
+		            sh("sudo systemctl restart php7.4-fpm")
+            }
+        }
+      }
+
+         stage('LOG git'){
+            steps {
+                script {
+                        sh("git log -5")
+                }
+            }
+        }
+   }
+}
